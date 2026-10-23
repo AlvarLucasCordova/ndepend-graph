@@ -1,1 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diagrama de contenedores C4</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #eef2f6;
+    }
+    header {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: #182330;
+      color: white;
+    }
+    button, a {
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 6px;
+      background: #fff;
+      color: #182330;
+      cursor: pointer;
+      text-decoration: none;
+      font: inherit;
+    }
+    #zoom { min-width: 60px; text-align: center; }
+    #visor {
+      width: 100%;
+      height: calc(100dvh - 56px);
+      overflow: hidden;
+      position: relative;
+      cursor: grab;
+      touch-action: none;
+    }
+    #visor.arrastrando { cursor: grabbing; }
+    img {
+      position: absolute;
+      left: 0;
+      top: 0;
+      max-width: none;
+      transform-origin: 0 0;
+      pointer-events: none;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <button id="menos" aria-label="Reducir zoom">−</button>
+    <span id="zoom">Cargando…</span>
+    <button id="mas" aria-label="Aumentar zoom">+</button>
+    <button id="ajustar">Ajustar</button>
+    <button id="pantalla">⛶</button>
+    <a href="./Contenedores.svg" target="_blank" rel="noopener">SVG ↗</a>
+  </header>
 
+  <main id="visor" aria-label="Diagrama: rueda para ampliar y arrastrar para mover">
+    <img id="diagrama" src="./Contenedores.svg"
+         alt="Diagrama C4 de contenedores" draggable="false">
+  </main>
+
+  <script>
+    const visor = document.getElementById("visor");
+    const imagen = document.getElementById("diagrama");
+    const indicador = document.getElementById("zoom");
+    let escala = 1, x = 0, y = 0, listo = false;
+    let arrastre = null;
+
+    function dibujar() {
+      imagen.style.transform =
+        `translate(${x}px, ${y}px) scale(${escala})`;
+      indicador.textContent = `${Math.round(escala * 100)} %`;
+    }
+
+    function ajustar() {
+      if (!listo) return;
+      escala = Math.min(
+        (visor.clientWidth - 24) / imagen.naturalWidth,
+        (visor.clientHeight - 24) / imagen.naturalHeight
+      );
+      escala = Math.max(0.01, escala);
+      x = (visor.clientWidth - imagen.naturalWidth * escala) / 2;
+      y = (visor.clientHeight - imagen.naturalHeight * escala) / 2;
+      dibujar();
+    }
+
+    function ampliar(factor, px = visor.clientWidth / 2,
+                     py = visor.clientHeight / 2) {
+      if (!listo) return;
+      const nueva = Math.max(0.01, Math.min(50, escala * factor));
+      x = px - (px - x) * nueva / escala;
+      y = py - (py - y) * nueva / escala;
+      escala = nueva;
+      dibujar();
+    }
+
+    imagen.onload = () => {
+      listo = true;
+      ajustar();
+    };
+    imagen.onerror = () => {
+      indicador.textContent = "Error SVG";
+    };
+    if (imagen.complete && imagen.naturalWidth) {
+      listo = true;
+      ajustar();
+    }
+
+    visor.addEventListener("wheel", event => {
+      event.preventDefault();
+      const rect = visor.getBoundingClientRect();
+      ampliar(
+        Math.exp(-event.deltaY * 0.002),
+        event.clientX - rect.left,
+        event.clientY - rect.top
+      );
+    }, { passive: false });
+
+    visor.addEventListener("pointerdown", event => {
+      if (event.button !== 0 || !listo || arrastre) return;
+      arrastre = {
+        id: event.pointerId,
+        px: event.clientX,
+        py: event.clientY,
+        x, y
+      };
+      visor.setPointerCapture(event.pointerId);
+      visor.classList.add("arrastrando");
+    });
+
+    visor.addEventListener("pointermove", event => {
+      if (!arrastre || event.pointerId !== arrastre.id) return;
+      x = arrastre.x + event.clientX - arrastre.px;
+      y = arrastre.y + event.clientY - arrastre.py;
+      dibujar();
+    });
+
+    function soltar(event) {
+      if (!arrastre || event.pointerId !== arrastre.id) return;
+      arrastre = null;
+      visor.classList.remove("arrastrando");
+    }
+
+    visor.addEventListener("pointerup", soltar);
+    visor.addEventListener("pointercancel", soltar);
+    visor.addEventListener("lostpointercapture", soltar);
+
+    document.getElementById("mas").onclick = () => ampliar(1.25);
+    document.getElementById("menos").onclick = () => ampliar(0.8);
+    document.getElementById("ajustar").onclick = ajustar;
+
+    document.getElementById("pantalla").onclick = async () => {
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        } else {
+          await document.documentElement.requestFullscreen();
+        }
+      } catch {
+        alert("Abre el visor en otra pestaña para usar pantalla completa.");
+      }
+    };
+
+    window.addEventListener("resize", ajustar);
+  </script>
+</body>
+</html>
