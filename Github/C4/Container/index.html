@@ -1,217 +1,374 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Diagramas C4</title>
-<style>
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: system-ui, sans-serif;
-    background: #eef2f6;
-    color: #182330;
-  }
-  header {
-    min-height: 56px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: #182330;
-    color: white;
-  }
-  button, a {
-    padding: 8px 12px;
-    border: 0;
-    border-radius: 6px;
-    background: white;
-    color: #182330;
-    cursor: pointer;
-    text-decoration: none;
-    font: inherit;
-  }
-  #zoom { min-width: 64px; text-align: center; }
-  #visor {
-    position: relative;
-    overflow: hidden;
-    cursor: grab;
-    touch-action: none;
-  }
-  #visor.arrastrando { cursor: grabbing; }
-  #diagrama {
-    position: absolute;
-    left: 0;
-    top: 0;
-    max-width: none;
-    transform-origin: 0 0;
-    pointer-events: none;
-    user-select: none;
-  }
-  #menu { max-width: 760px; margin: 48px auto; padding: 24px; }
-  #menu a {
-    display: block;
-    margin: 14px 0;
-    padding: 20px;
-    border: 1px solid #d5dce5;
-  }
-  #menu a:hover { background: #dceaff; }
-  [hidden] { display: none !important; }
-</style>
-</head>
-<body>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diagramas C4</title>
 
-<section id="menu">
-  <h1>Diagramas C4</h1>
-  <p>Selecciona un diagrama para abrir su visor.</p>
-  <a href="?diagrama=1">Diagrama 1 — Paso3Completo.png</a>
-  <a href="?diagrama=2">Diagrama 2 — Paso3Completo (1).png</a>
-  <a href="?diagrama=3">Diagrama 3 — Paso3Completo2.png</a>
-  <a href="?diagrama=4">Diagrama 4 — Paso3Completo3.png</a>
-</section>
-
-<section id="pagina" hidden>
-  <header id="barra">
-    <a href="./">← Diagramas</a>
-    <button id="menos" aria-label="Reducir zoom">−</button>
-    <span id="zoom">Cargando…</span>
-    <button id="mas" aria-label="Aumentar zoom">+</button>
-    <button id="ajustar">Ajustar</button>
-    <button id="pantalla">Pantalla completa</button>
-    <a id="original" target="_blank" rel="noopener">Imagen ↗</a>
-  </header>
-  <main id="visor">
-    <img id="diagrama" alt="Diagrama C4" draggable="false">
-  </main>
-</section>
-
-<script>
-const archivos = {
-  "1": "Paso3Completo.png",
-  "2": "Paso3Completo (1).png",
-  "3": "Paso3Completo2.png",
-  "4": "Paso3Completo3.png"
-};
-
-const numero = new URLSearchParams(location.search).get("diagrama");
-
-if (Object.hasOwn(archivos, numero)) {
-  document.getElementById("menu").hidden = true;
-  document.getElementById("pagina").hidden = false;
-  document.title = `Diagrama C4 ${numero}`;
-
-  const visor = document.getElementById("visor");
-  const imagen = document.getElementById("diagrama");
-  const indicador = document.getElementById("zoom");
-  const barra = document.getElementById("barra");
-
-  let escala = 1, x = 0, y = 0;
-  let listo = false, arrastre = null;
-
-  function dibujar() {
-    imagen.style.transform =
-      `translate(${x}px, ${y}px) scale(${escala})`;
-    indicador.textContent = `${Math.round(escala * 100)} %`;
-  }
-
-  function ajustar() {
-    if (!listo) return;
-    escala = Math.max(0.001, Math.min(
-      (visor.clientWidth - 24) / imagen.naturalWidth,
-      (visor.clientHeight - 24) / imagen.naturalHeight
-    ));
-    x = (visor.clientWidth - imagen.naturalWidth * escala) / 2;
-    y = (visor.clientHeight - imagen.naturalHeight * escala) / 2;
-    dibujar();
-  }
-
-  function dimensionar() {
-    visor.style.height =
-      `${Math.max(100, window.innerHeight - barra.offsetHeight)}px`;
-    ajustar();
-  }
-
-  function ampliar(factor, px = visor.clientWidth / 2,
-                   py = visor.clientHeight / 2) {
-    if (!listo) return;
-    const nueva = Math.max(0.001, Math.min(50, escala * factor));
-    x = px - (px - x) * nueva / escala;
-    y = py - (py - y) * nueva / escala;
-    escala = nueva;
-    dibujar();
-  }
-
-  imagen.onload = () => {
-    listo = true;
-    dimensionar();
-  };
-  imagen.onerror = () => {
-    indicador.textContent = "Error al cargar";
-  };
-
-  const ruta = "./" + encodeURIComponent(archivos[numero]);
-  document.getElementById("original").href = ruta;
-  imagen.src = ruta;
-  dimensionar();
-
-  visor.addEventListener("wheel", event => {
-    event.preventDefault();
-    const rect = visor.getBoundingClientRect();
-    ampliar(
-      Math.exp(-event.deltaY * 0.002),
-      event.clientX - rect.left,
-      event.clientY - rect.top
-    );
-  }, { passive: false });
-
-  visor.addEventListener("pointerdown", event => {
-    if (event.button !== 0 || !listo || arrastre) return;
-    arrastre = {
-      id: event.pointerId,
-      px: event.clientX,
-      py: event.clientY,
-      x, y
-    };
-    visor.setPointerCapture(event.pointerId);
-    visor.classList.add("arrastrando");
-  });
-
-  visor.addEventListener("pointermove", event => {
-    if (!arrastre || event.pointerId !== arrastre.id) return;
-    x = arrastre.x + event.clientX - arrastre.px;
-    y = arrastre.y + event.clientY - arrastre.py;
-    dibujar();
-  });
-
-  function soltar(event) {
-    if (!arrastre || event.pointerId !== arrastre.id) return;
-    arrastre = null;
-    visor.classList.remove("arrastrando");
-  }
-
-  visor.addEventListener("pointerup", soltar);
-  visor.addEventListener("pointercancel", soltar);
-  visor.addEventListener("lostpointercapture", soltar);
-
-  document.getElementById("mas").onclick = () => ampliar(1.25);
-  document.getElementById("menos").onclick = () => ampliar(0.8);
-  document.getElementById("ajustar").onclick = ajustar;
-
-  document.getElementById("pantalla").onclick = async () => {
-    try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen();
-      } else {
-        await document.documentElement.requestFullscreen();
-      }
-    } catch {
-      alert("Abre esta página en otra pestaña para usar pantalla completa.");
+  <style>
+    * {
+      box-sizing: border-box;
     }
-  };
 
-  window.addEventListener("resize", dimensionar);
-}
-</script>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #eef2f6;
+      color: #182330;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      min-height: 56px;
+      padding: 8px 12px;
+      background: #182330;
+      color: white;
+    }
+
+    button,
+    a {
+      padding: 8px 12px;
+      border: 0;
+      border-radius: 6px;
+      background: white;
+      color: #182330;
+      cursor: pointer;
+      text-decoration: none;
+      font: inherit;
+    }
+
+    button:hover,
+    a:hover {
+      background: #dceaff;
+    }
+
+    #zoom {
+      min-width: 70px;
+      text-align: center;
+    }
+
+    #visor {
+      position: relative;
+      overflow: hidden;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #visor.arrastrando {
+      cursor: grabbing;
+    }
+
+    #diagrama {
+      position: absolute;
+      left: 0;
+      top: 0;
+      max-width: none;
+      transform-origin: 0 0;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #menu {
+      max-width: 760px;
+      margin: 48px auto;
+      padding: 24px;
+    }
+
+    #menu a {
+      display: block;
+      margin: 14px 0;
+      padding: 20px;
+      border: 1px solid #d5dce5;
+    }
+
+    #ayuda {
+      margin: 24px 0;
+      color: #526172;
+      line-height: 1.6;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <section id="menu">
+    <h1>Diagramas C4</h1>
+    <p>Selecciona un diagrama para abrir su visor.</p>
+
+    <a href="?diagrama=1">
+      Diagrama 1 — Paso3Completo.png
+    </a>
+
+    <a href="?diagrama=2">
+      Diagrama 2 — Paso3Completo (1).png
+    </a>
+
+    <a href="?diagrama=3">
+      Diagrama 3 — Paso3Completo2.png
+    </a>
+
+    <a href="?diagrama=4">
+      Diagrama 4 — Paso3Completo3.png
+    </a>
+
+    <a href="?diagrama=5">
+      Diagrama completo — Completo.svg
+    </a>
+
+    <p id="ayuda">
+      Usa la rueda del mouse para ampliar y mantén presionado
+      el botón izquierdo para mover el diagrama.
+    </p>
+  </section>
+
+  <section id="pagina" hidden>
+    <header id="barra">
+      <a href="./">← Diagramas</a>
+
+      <button id="menos" aria-label="Reducir zoom">−</button>
+      <span id="zoom" aria-live="polite">Cargando…</span>
+      <button id="mas" aria-label="Aumentar zoom">+</button>
+
+      <button id="ajustar">Ajustar</button>
+      <button id="real">100 %</button>
+      <button id="pantalla">Pantalla completa</button>
+
+      <a id="original" target="_blank" rel="noopener">
+        Imagen ↗
+      </a>
+    </header>
+
+    <main
+      id="visor"
+      aria-label="Usa la rueda para ampliar y arrastra para mover"
+    >
+      <img id="diagrama" alt="Diagrama C4" draggable="false">
+    </main>
+  </section>
+
+  <script>
+    const archivos = {
+      "1": "Paso3Completo.png",
+      "2": "Paso3Completo (1).png",
+      "3": "Paso3Completo2.png",
+      "4": "Paso3Completo3.png",
+      "5": "Completo.svg"
+    };
+
+    const numero = new URLSearchParams(location.search)
+      .get("diagrama");
+
+    if (Object.hasOwn(archivos, numero)) {
+      document.getElementById("menu").hidden = true;
+      document.getElementById("pagina").hidden = false;
+
+      document.title = `C4 — ${archivos[numero]}`;
+
+      const visor = document.getElementById("visor");
+      const imagen = document.getElementById("diagrama");
+      const indicador = document.getElementById("zoom");
+      const barra = document.getElementById("barra");
+
+      let escala = 1;
+      let x = 0;
+      let y = 0;
+      let listo = false;
+      let arrastre = null;
+
+      function dibujar() {
+        imagen.style.transform =
+          `translate(${x}px, ${y}px) scale(${escala})`;
+
+        indicador.textContent =
+          `${Math.round(escala * 100)} %`;
+      }
+
+      function ajustar() {
+        if (!listo) return;
+
+        escala = Math.max(
+          0.001,
+          Math.min(
+            (visor.clientWidth - 24) / imagen.naturalWidth,
+            (visor.clientHeight - 24) / imagen.naturalHeight
+          )
+        );
+
+        x = (
+          visor.clientWidth - imagen.naturalWidth * escala
+        ) / 2;
+
+        y = (
+          visor.clientHeight - imagen.naturalHeight * escala
+        ) / 2;
+
+        dibujar();
+      }
+
+      function dimensionar() {
+        visor.style.height =
+          `${Math.max(
+            100,
+            window.innerHeight - barra.offsetHeight
+          )}px`;
+
+        ajustar();
+      }
+
+      function ampliar(
+        factor,
+        px = visor.clientWidth / 2,
+        py = visor.clientHeight / 2
+      ) {
+        if (!listo) return;
+
+        const nueva = Math.max(
+          0.001,
+          Math.min(50, escala * factor)
+        );
+
+        x = px - (px - x) * nueva / escala;
+        y = py - (py - y) * nueva / escala;
+
+        escala = nueva;
+        dibujar();
+      }
+
+      imagen.onload = () => {
+        listo = true;
+
+        imagen.style.width = `${imagen.naturalWidth}px`;
+        imagen.style.height = `${imagen.naturalHeight}px`;
+
+        dimensionar();
+      };
+
+      imagen.onerror = () => {
+        indicador.textContent = "Error";
+        imagen.alt =
+          `No se pudo cargar ${archivos[numero]}`;
+      };
+
+      const ruta =
+        "./" + encodeURIComponent(archivos[numero]);
+
+      document.getElementById("original").href = ruta;
+      imagen.src = ruta;
+
+      dimensionar();
+
+      visor.addEventListener("wheel", event => {
+        event.preventDefault();
+
+        const rect = visor.getBoundingClientRect();
+
+        ampliar(
+          Math.exp(-event.deltaY * 0.002),
+          event.clientX - rect.left,
+          event.clientY - rect.top
+        );
+      }, { passive: false });
+
+      visor.addEventListener("pointerdown", event => {
+        if (
+          event.button !== 0 ||
+          !listo ||
+          arrastre
+        ) return;
+
+        arrastre = {
+          id: event.pointerId,
+          px: event.clientX,
+          py: event.clientY,
+          x,
+          y
+        };
+
+        visor.setPointerCapture(event.pointerId);
+        visor.classList.add("arrastrando");
+      });
+
+      visor.addEventListener("pointermove", event => {
+        if (
+          !arrastre ||
+          event.pointerId !== arrastre.id
+        ) return;
+
+        x = arrastre.x + event.clientX - arrastre.px;
+        y = arrastre.y + event.clientY - arrastre.py;
+
+        dibujar();
+      });
+
+      function soltar(event) {
+        if (
+          !arrastre ||
+          event.pointerId !== arrastre.id
+        ) return;
+
+        arrastre = null;
+        visor.classList.remove("arrastrando");
+      }
+
+      visor.addEventListener("pointerup", soltar);
+      visor.addEventListener("pointercancel", soltar);
+      visor.addEventListener("lostpointercapture", soltar);
+
+      document.getElementById("mas").onclick =
+        () => ampliar(1.25);
+
+      document.getElementById("menos").onclick =
+        () => ampliar(0.8);
+
+      document.getElementById("ajustar").onclick =
+        ajustar;
+
+      document.getElementById("real").onclick = () => {
+        if (listo) ampliar(1 / escala);
+      };
+
+      document.getElementById("pantalla").onclick =
+        async () => {
+          try {
+            if (document.fullscreenElement) {
+              await document.exitFullscreen();
+            } else {
+              await document.documentElement
+                .requestFullscreen();
+            }
+          } catch {
+            alert(
+              "Abre el visor en otra pestaña para usar " +
+              "pantalla completa."
+            );
+          }
+        };
+
+      window.addEventListener("resize", dimensionar);
+
+      document.addEventListener("keydown", event => {
+        if (event.ctrlKey || event.metaKey || event.altKey) {
+          return;
+        }
+
+        if (event.key === "+" || event.key === "=") {
+          event.preventDefault();
+          ampliar(1.25);
+        } else if (event.key === "-") {
+          event.preventDefault();
+          ampliar(0.8);
+        } else if (event.key === "0") {
+          event.preventDefault();
+          ajustar();
+        }
+      });
+    }
+  </script>
 </body>
 </html>
