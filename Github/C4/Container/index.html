@@ -6,9 +6,12 @@
   <title>Diagramas C4</title>
 
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
-    html, body {
+    html,
+    body {
       margin: 0;
       min-height: 100%;
       font-family: system-ui, sans-serif;
@@ -30,7 +33,9 @@
       background: white;
     }
 
-    h2 { margin-top: 0; }
+    h2 {
+      margin-top: 0;
+    }
 
     a {
       display: inline-block;
@@ -42,7 +47,9 @@
       text-decoration: none;
     }
 
-    a:hover { background: #cddfff; }
+    a:hover {
+      background: #cddfff;
+    }
 
     body.modo-visor {
       height: 100dvh;
@@ -60,7 +67,9 @@
       overscroll-behavior: none;
     }
 
-    #visor.arrastrando { cursor: grabbing; }
+    #visor.arrastrando {
+      cursor: grabbing;
+    }
 
     #imagen {
       position: absolute;
@@ -73,7 +82,9 @@
       -webkit-user-drag: none;
     }
 
-    [hidden] { display: none !important; }
+    [hidden] {
+      display: none !important;
+    }
   </style>
 </head>
 
@@ -145,13 +156,17 @@
       document.title = datos.titulo;
       imagen.alt = datos.titulo;
 
+      const ZOOM_MAXIMO = 5;
+
       let listo = false;
       let escala = 1;
       let minimo = 1;
-      let maximo = 50;
+      let maximo = 5;
       let x = 0;
       let y = 0;
       let gesto = null;
+      let anchoAnterior = 0;
+      let altoAnterior = 0;
 
       const punteros = new Map();
 
@@ -159,7 +174,18 @@
         return Math.max(inferior, Math.min(superior, valor));
       }
 
+      function recalcularLimites() {
+        minimo = Math.min(
+          visor.clientWidth / imagen.naturalWidth,
+          visor.clientHeight / imagen.naturalHeight
+        );
+
+        maximo = minimo * ZOOM_MAXIMO;
+      }
+
       function dibujar() {
+        escala = limitar(escala, minimo, maximo);
+
         const ancho = imagen.naturalWidth * escala;
         const alto = imagen.naturalHeight * escala;
         const vw = visor.clientWidth;
@@ -177,22 +203,14 @@
           `translate(${x}px, ${y}px) scale(${escala})`;
       }
 
-      function recalcularMinimo() {
-        minimo = Math.min(
-          visor.clientWidth / imagen.naturalWidth,
-          visor.clientHeight / imagen.naturalHeight
-        );
-
-        maximo = Math.max(50, minimo * 20);
-      }
-
       function ajustar() {
         if (!listo) return;
 
-        recalcularMinimo();
+        recalcularLimites();
         escala = minimo;
         x = 0;
         y = 0;
+
         dibujar();
       }
 
@@ -200,6 +218,8 @@
         if (!listo) return;
 
         const nueva = limitar(escala * factor, minimo, maximo);
+
+        if (nueva === escala) return;
 
         x = px - (px - x) * nueva / escala;
         y = py - (py - y) * nueva / escala;
@@ -232,7 +252,10 @@
 
           gesto = {
             tipo: "pellizco",
-            distancia: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)),
+            distancia: Math.max(
+              1,
+              Math.hypot(b.x - a.x, b.y - a.y)
+            ),
             escala,
             anclaX: (cx - x) / escala,
             anclaY: (cy - y) / escala
@@ -241,7 +264,10 @@
           gesto = null;
         }
 
-        visor.classList.toggle("arrastrando", puntos.length > 0);
+        visor.classList.toggle(
+          "arrastrando",
+          puntos.length > 0
+        );
       }
 
       imagen.onload = () => {
@@ -250,7 +276,10 @@
         imagen.style.width = `${imagen.naturalWidth}px`;
         imagen.style.height = `${imagen.naturalHeight}px`;
 
+        anchoAnterior = visor.clientWidth;
+        altoAnterior = visor.clientHeight;
         listo = true;
+
         ajustar();
       };
 
@@ -268,13 +297,18 @@
         event.preventDefault();
 
         const p = punto(event);
+
         const delta = event.deltaMode === 1
           ? event.deltaY * 16
           : event.deltaMode === 2
             ? event.deltaY * visor.clientHeight
             : event.deltaY;
 
-        ampliar(Math.exp(-delta * 0.002), p.x, p.y);
+        ampliar(
+          Math.exp(-limitar(delta, -200, 200) * 0.002),
+          p.x,
+          p.y
+        );
 
         if (punteros.size) iniciarGesto();
       }, { passive: false });
@@ -284,6 +318,7 @@
 
         punteros.set(event.pointerId, punto(event));
         visor.setPointerCapture(event.pointerId);
+
         iniciarGesto();
       });
 
@@ -295,7 +330,10 @@
 
         const puntos = [...punteros.values()];
 
-        if (gesto?.tipo === "arrastre" && puntos.length === 1) {
+        if (
+          gesto?.tipo === "arrastre" &&
+          puntos.length === 1
+        ) {
           x += actual.x - gesto.punto.x;
           y += actual.y - gesto.punto.y;
 
@@ -306,7 +344,10 @@
           puntos.length >= 2
         ) {
           const [a, b] = puntos;
-          const distancia = Math.hypot(b.x - a.x, b.y - a.y);
+          const distancia = Math.hypot(
+            b.x - a.x,
+            b.y - a.y
+          );
 
           escala = limitar(
             gesto.escala * distancia / gesto.distancia,
@@ -318,6 +359,7 @@
           y = (a.y + b.y) / 2 - gesto.anclaY * escala;
 
           dibujar();
+          iniciarGesto();
         }
       });
 
@@ -330,36 +372,36 @@
       visor.addEventListener("pointercancel", soltar);
       visor.addEventListener("lostpointercapture", soltar);
 
-      let anchoAnterior = 0;
-      let altoAnterior = 0;
-
       new ResizeObserver(() => {
         const ancho = visor.clientWidth;
         const alto = visor.clientHeight;
 
-        if (!listo) {
-          anchoAnterior = ancho;
-          altoAnterior = alto;
-          return;
-        }
+        if (!listo || !ancho || !alto) return;
 
-        const centradoX = ((anchoAnterior || ancho) / 2 - x) / escala;
-        const centradoY = ((altoAnterior || alto) / 2 - y) / escala;
-        const estabaAjustado = Math.abs(escala - minimo) < 0.00001;
+        if (
+          ancho === anchoAnterior &&
+          alto === altoAnterior
+        ) return;
 
-        recalcularMinimo();
+        const zoomRelativo = escala / minimo;
+        const centroX = (anchoAnterior / 2 - x) / escala;
+        const centroY = (altoAnterior / 2 - y) / escala;
 
-        escala = estabaAjustado
-          ? minimo
-          : limitar(escala, minimo, maximo);
+        recalcularLimites();
 
-        x = ancho / 2 - centradoX * escala;
-        y = alto / 2 - centradoY * escala;
+        escala = limitar(
+          minimo * zoomRelativo,
+          minimo,
+          maximo
+        );
 
-        dibujar();
+        x = ancho / 2 - centroX * escala;
+        y = alto / 2 - centroY * escala;
 
         anchoAnterior = ancho;
         altoAnterior = alto;
+
+        dibujar();
 
         if (punteros.size) iniciarGesto();
       }).observe(visor);
