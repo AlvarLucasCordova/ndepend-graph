@@ -3,20 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ejemplos C4</title>
+  <title>Diagramas C4</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html,
-    body {
+    html, body {
       margin: 0;
       min-height: 100%;
       font-family: system-ui, sans-serif;
-      color: #182330;
       background: #eef2f6;
+      color: #182330;
     }
 
     #menu {
@@ -25,7 +22,7 @@
       padding: 24px;
     }
 
-    .ejemplo {
+    article {
       margin: 20px 0;
       padding: 20px;
       border: 1px solid #d5dce5;
@@ -33,11 +30,9 @@
       background: white;
     }
 
-    h2 {
-      margin-top: 0;
-    }
+    h2 { margin-top: 0; }
 
-    .ejemplo a {
+    a {
       display: inline-block;
       margin: 4px;
       padding: 10px 14px;
@@ -47,9 +42,7 @@
       text-decoration: none;
     }
 
-    .ejemplo a:hover {
-      background: #cddfff;
-    }
+    a:hover { background: #cddfff; }
 
     body.modo-visor {
       height: 100dvh;
@@ -64,11 +57,10 @@
       background: white;
       cursor: grab;
       touch-action: none;
+      overscroll-behavior: none;
     }
 
-    #visor.arrastrando {
-      cursor: grabbing;
-    }
+    #visor.arrastrando { cursor: grabbing; }
 
     #imagen {
       position: absolute;
@@ -81,37 +73,34 @@
       -webkit-user-drag: none;
     }
 
-    [hidden] {
-      display: none !important;
-    }
+    [hidden] { display: none !important; }
   </style>
 </head>
 
 <body>
   <section id="menu">
     <h1>Ejemplos C4</h1>
-    <p>Selecciona el diagrama que quieres visualizar.</p>
 
-    <article class="ejemplo">
+    <article>
       <h2>Logística</h2>
       <a href="?diagrama=1">Contexto del sistema</a>
       <a href="?diagrama=2">Contenedores</a>
     </article>
 
-    <article class="ejemplo">
+    <article>
       <h2>Universidad</h2>
       <a href="?diagrama=3">Contexto del sistema</a>
       <a href="?diagrama=4">Contenedores</a>
     </article>
 
-    <article class="ejemplo">
+    <article>
       <h2>Hospital</h2>
       <a href="?diagrama=5">Contexto del sistema</a>
       <a href="?diagrama=6">Contenedores</a>
     </article>
   </section>
 
-  <main id="visor" hidden aria-label="Visor del diagrama">
+  <main id="visor" hidden aria-label="Diagrama C4">
     <img id="imagen" alt="Diagrama C4" draggable="false">
   </main>
 
@@ -143,8 +132,7 @@
       }
     };
 
-    const id = new URLSearchParams(location.search)
-      .get("diagrama");
+    const id = new URLSearchParams(location.search).get("diagrama");
 
     if (Object.hasOwn(diagramas, id)) {
       const datos = diagramas[id];
@@ -157,48 +145,61 @@
       document.title = datos.titulo;
       imagen.alt = datos.titulo;
 
+      let listo = false;
       let escala = 1;
+      let minimo = 1;
+      let maximo = 50;
       let x = 0;
       let y = 0;
-      let listo = false;
       let gesto = null;
 
       const punteros = new Map();
 
+      function limitar(valor, inferior, superior) {
+        return Math.max(inferior, Math.min(superior, valor));
+      }
+
       function dibujar() {
+        const ancho = imagen.naturalWidth * escala;
+        const alto = imagen.naturalHeight * escala;
+        const vw = visor.clientWidth;
+        const vh = visor.clientHeight;
+
+        x = ancho <= vw
+          ? (vw - ancho) / 2
+          : limitar(x, vw - ancho, 0);
+
+        y = alto <= vh
+          ? (vh - alto) / 2
+          : limitar(y, vh - alto, 0);
+
         imagen.style.transform =
           `translate(${x}px, ${y}px) scale(${escala})`;
+      }
+
+      function recalcularMinimo() {
+        minimo = Math.min(
+          visor.clientWidth / imagen.naturalWidth,
+          visor.clientHeight / imagen.naturalHeight
+        );
+
+        maximo = Math.max(50, minimo * 20);
       }
 
       function ajustar() {
         if (!listo) return;
 
-        escala = Math.max(
-          0.001,
-          Math.min(
-            visor.clientWidth / imagen.naturalWidth,
-            visor.clientHeight / imagen.naturalHeight
-          )
-        );
-
-        x = (
-          visor.clientWidth - imagen.naturalWidth * escala
-        ) / 2;
-
-        y = (
-          visor.clientHeight - imagen.naturalHeight * escala
-        ) / 2;
-
+        recalcularMinimo();
+        escala = minimo;
+        x = 0;
+        y = 0;
         dibujar();
       }
 
       function ampliar(factor, px, py) {
         if (!listo) return;
 
-        const nueva = Math.max(
-          0.001,
-          Math.min(50, escala * factor)
-        );
+        const nueva = limitar(escala * factor, minimo, maximo);
 
         x = px - (px - x) * nueva / escala;
         y = py - (py - y) * nueva / escala;
@@ -207,10 +208,44 @@
         dibujar();
       }
 
-      imagen.onload = () => {
-        if (!imagen.naturalWidth || !imagen.naturalHeight) {
-          return;
+      function punto(event) {
+        const rect = visor.getBoundingClientRect();
+
+        return {
+          x: event.clientX - rect.left,
+          y: event.clientY - rect.top
+        };
+      }
+
+      function iniciarGesto() {
+        const puntos = [...punteros.values()];
+
+        if (puntos.length === 1) {
+          gesto = {
+            tipo: "arrastre",
+            punto: puntos[0]
+          };
+        } else if (puntos.length >= 2) {
+          const [a, b] = puntos;
+          const cx = (a.x + b.x) / 2;
+          const cy = (a.y + b.y) / 2;
+
+          gesto = {
+            tipo: "pellizco",
+            distancia: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)),
+            escala,
+            anclaX: (cx - x) / escala,
+            anclaY: (cy - y) / escala
+          };
+        } else {
+          gesto = null;
         }
+
+        visor.classList.toggle("arrastrando", puntos.length > 0);
+      }
+
+      imagen.onload = () => {
+        if (!imagen.naturalWidth || !imagen.naturalHeight) return;
 
         imagen.style.width = `${imagen.naturalWidth}px`;
         imagen.style.height = `${imagen.naturalHeight}px`;
@@ -232,56 +267,22 @@
       visor.addEventListener("wheel", event => {
         event.preventDefault();
 
-        ampliar(
-          Math.exp(-event.deltaY * 0.002),
-          event.clientX,
-          event.clientY
-        );
+        const p = punto(event);
+        const delta = event.deltaMode === 1
+          ? event.deltaY * 16
+          : event.deltaMode === 2
+            ? event.deltaY * visor.clientHeight
+            : event.deltaY;
+
+        ampliar(Math.exp(-delta * 0.002), p.x, p.y);
+
+        if (punteros.size) iniciarGesto();
       }, { passive: false });
-
-      function iniciarGesto() {
-        const puntos = [...punteros.values()];
-
-        if (puntos.length === 1) {
-          gesto = {
-            tipo: "arrastre",
-            punto: puntos[0],
-            x,
-            y
-          };
-        } else if (puntos.length >= 2) {
-          const [a, b] = puntos;
-          const cx = (a.x + b.x) / 2;
-          const cy = (a.y + b.y) / 2;
-
-          gesto = {
-            tipo: "pellizco",
-            distancia: Math.max(
-              1,
-              Math.hypot(b.x - a.x, b.y - a.y)
-            ),
-            escala,
-            anclaX: (cx - x) / escala,
-            anclaY: (cy - y) / escala
-          };
-        } else {
-          gesto = null;
-        }
-
-        visor.classList.toggle(
-          "arrastrando",
-          puntos.length > 0
-        );
-      }
 
       visor.addEventListener("pointerdown", event => {
         if (!listo || event.button !== 0) return;
 
-        punteros.set(event.pointerId, {
-          x: event.clientX,
-          y: event.clientY
-        });
-
+        punteros.set(event.pointerId, punto(event));
         visor.setPointerCapture(event.pointerId);
         iniciarGesto();
       });
@@ -289,37 +290,28 @@
       visor.addEventListener("pointermove", event => {
         if (!punteros.has(event.pointerId)) return;
 
-        punteros.set(event.pointerId, {
-          x: event.clientX,
-          y: event.clientY
-        });
+        const actual = punto(event);
+        punteros.set(event.pointerId, actual);
 
         const puntos = [...punteros.values()];
 
-        if (
-          gesto?.tipo === "arrastre" &&
-          puntos.length === 1
-        ) {
-          x = gesto.x + puntos[0].x - gesto.punto.x;
-          y = gesto.y + puntos[0].y - gesto.punto.y;
+        if (gesto?.tipo === "arrastre" && puntos.length === 1) {
+          x += actual.x - gesto.punto.x;
+          y += actual.y - gesto.punto.y;
 
           dibujar();
+          gesto.punto = actual;
         } else if (
           gesto?.tipo === "pellizco" &&
           puntos.length >= 2
         ) {
           const [a, b] = puntos;
-          const distancia = Math.hypot(
-            b.x - a.x,
-            b.y - a.y
-          );
+          const distancia = Math.hypot(b.x - a.x, b.y - a.y);
 
-          escala = Math.max(
-            0.001,
-            Math.min(
-              50,
-              gesto.escala * distancia / gesto.distancia
-            )
+          escala = limitar(
+            gesto.escala * distancia / gesto.distancia,
+            minimo,
+            maximo
           );
 
           x = (a.x + b.x) / 2 - gesto.anclaX * escala;
@@ -338,8 +330,38 @@
       visor.addEventListener("pointercancel", soltar);
       visor.addEventListener("lostpointercapture", soltar);
 
+      let anchoAnterior = 0;
+      let altoAnterior = 0;
+
       new ResizeObserver(() => {
-        if (punteros.size === 0) ajustar();
+        const ancho = visor.clientWidth;
+        const alto = visor.clientHeight;
+
+        if (!listo) {
+          anchoAnterior = ancho;
+          altoAnterior = alto;
+          return;
+        }
+
+        const centradoX = ((anchoAnterior || ancho) / 2 - x) / escala;
+        const centradoY = ((altoAnterior || alto) / 2 - y) / escala;
+        const estabaAjustado = Math.abs(escala - minimo) < 0.00001;
+
+        recalcularMinimo();
+
+        escala = estabaAjustado
+          ? minimo
+          : limitar(escala, minimo, maximo);
+
+        x = ancho / 2 - centradoX * escala;
+        y = alto / 2 - centradoY * escala;
+
+        dibujar();
+
+        anchoAnterior = ancho;
+        altoAnterior = alto;
+
+        if (punteros.size) iniciarGesto();
       }).observe(visor);
     }
   </script>
