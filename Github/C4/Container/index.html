@@ -3,217 +3,95 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ejemplos C4</title>
+  <title>Diagrama C4</title>
 
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
+    html,
     body {
+      width: 100%;
+      height: 100%;
       margin: 0;
-      font-family: system-ui, sans-serif;
-      background: #eef2f6;
-      color: #182330;
-    }
-
-    #menu {
-      max-width: 800px;
-      margin: 40px auto;
-      padding: 24px;
-    }
-
-    .ejemplo {
-      margin: 20px 0;
-      padding: 20px;
-      border: 1px solid #d5dce5;
-      border-radius: 12px;
+      overflow: hidden;
       background: white;
     }
 
-    h2 { margin-top: 0; }
-
-    a, button {
-      display: inline-block;
-      padding: 9px 13px;
-      border: 0;
-      border-radius: 6px;
-      background: #e5edf7;
-      color: #182330;
-      font: inherit;
-      text-decoration: none;
-      cursor: pointer;
-    }
-
-    a:hover, button:hover {
-      background: #cddfff;
-    }
-
-    .ejemplo a { margin: 4px; }
-
-    #pagina {
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    header {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 8px;
-      padding: 10px;
-      background: #182330;
-      color: white;
-    }
-
-    #titulo {
-      margin-right: auto;
-      font-size: 14px;
-    }
-
-    #zoom {
-      min-width: 65px;
-      text-align: center;
-    }
-
     #visor {
-      position: relative;
-      flex: 1;
-      min-height: 0;
+      position: fixed;
+      inset: 0;
       overflow: hidden;
       cursor: grab;
       touch-action: none;
     }
 
-    #visor.arrastrando { cursor: grabbing; }
+    #visor.arrastrando {
+      cursor: grabbing;
+    }
 
     #imagen {
       position: absolute;
-      left: 0;
       top: 0;
+      left: 0;
       max-width: none;
       transform-origin: 0 0;
       pointer-events: none;
       user-select: none;
+      -webkit-user-drag: none;
     }
-
-    #estado {
-      position: absolute;
-      inset: 20px;
-      text-align: center;
-      pointer-events: none;
-    }
-
-    [hidden] { display: none !important; }
   </style>
 </head>
 
 <body>
-<section id="menu">
-  <h1>Ejemplos C4</h1>
-  <p>Selecciona una vista para abrirla con zoom y arrastre.</p>
-
-  <article class="ejemplo">
-    <h2>Logística</h2>
-    <a href="?diagrama=1">Contexto del sistema</a>
-    <a href="?diagrama=2">Contenedores</a>
-  </article>
-
-  <article class="ejemplo">
-    <h2>Universidad</h2>
-    <a href="?diagrama=3">Contexto del sistema</a>
-    <a href="?diagrama=4">Contenedores</a>
-  </article>
-
-  <article class="ejemplo">
-    <h2>Hospital</h2>
-    <a href="?diagrama=5">Contexto del sistema</a>
-    <a href="?diagrama=6">Contenedores</a>
-  </article>
-
-  <p>Rueda del mouse para ampliar. Clic sostenido para mover.</p>
-</section>
-
-<section id="pagina" hidden>
-  <header>
-    <a href="./">← Ejemplos</a>
-    <span id="titulo"></span>
-    <button id="menos" aria-label="Reducir zoom">−</button>
-    <span id="zoom">…</span>
-    <button id="mas" aria-label="Aumentar zoom">+</button>
-    <button id="ajustar">Ajustar</button>
-    <button id="real">100 %</button>
-    <button id="pantalla">Pantalla completa</button>
-    <a id="original" target="_blank" rel="noopener">SVG ↗</a>
-  </header>
-
-  <main id="visor" aria-label="Visor del diagrama">
-    <img id="imagen" alt="" draggable="false">
-    <p id="estado" role="status">Cargando diagrama…</p>
+  <main id="visor">
+    <img id="imagen" alt="Diagrama C4" draggable="false">
   </main>
-</section>
 
-<script>
-  const diagramas = {
-    "1": {
-      titulo: "Logística — Contexto del sistema",
-      archivo: "logistica/ContextoSistema.svg"
-    },
-    "2": {
-      titulo: "Logística — Contenedores",
-      archivo: "logistica/Paso3Completo (2).svg"
-    },
-    "3": {
-      titulo: "Universidad — Contexto del sistema",
-      archivo: "universidad/ContextoSistema (1).svg"
-    },
-    "4": {
-      titulo: "Universidad — Contenedores",
-      archivo: "universidad/Paso3Completo (1).svg"
-    },
-    "5": {
-      titulo: "Hospital — Contexto del sistema",
-      archivo: "../Hospital/ContextoSistema (2).svg"
-    },
-    "6": {
-      titulo: "Hospital — Contenedores",
-      archivo: "../Hospital/Paso3Completo (3).svg"
-    }
-  };
+  <script>
+    const archivos = {
+      "1": "logistica/ContextoSistema.svg",
+      "2": "logistica/Paso3Completo (2).svg",
+      "3": "universidad/ContextoSistema (1).svg",
+      "4": "universidad/Paso3Completo (1).svg",
+      "5": "../Hospital/ContextoSistema (2).svg",
+      "6": "../Hospital/Paso3Completo (3).svg"
+    };
 
-  const id = new URLSearchParams(location.search).get("diagrama");
+    const parametro = new URLSearchParams(location.search)
+      .get("diagrama");
 
-  if (Object.hasOwn(diagramas, id)) {
-    const datos = diagramas[id];
+    const id = Object.hasOwn(archivos, parametro)
+      ? parametro
+      : "1";
+
     const visor = document.getElementById("visor");
     const imagen = document.getElementById("imagen");
-    const zoom = document.getElementById("zoom");
-    const estado = document.getElementById("estado");
-
-    document.getElementById("menu").hidden = true;
-    document.getElementById("pagina").hidden = false;
-    document.getElementById("titulo").textContent = datos.titulo;
-    document.title = datos.titulo;
-    imagen.alt = datos.titulo;
 
     let escala = 1;
     let x = 0;
     let y = 0;
     let listo = false;
-    let arrastre = null;
+
+    const punteros = new Map();
+    let gesto = null;
 
     function dibujar() {
       imagen.style.transform =
-              `translate(${x}px, ${y}px) scale(${escala})`;
-      zoom.textContent = `${Math.round(escala * 100)} %`;
+        `translate(${x}px, ${y}px) scale(${escala})`;
     }
 
     function ajustar() {
       if (!listo) return;
 
-      escala = Math.max(0.001, Math.min(
-              (visor.clientWidth - 24) / imagen.naturalWidth,
-              (visor.clientHeight - 24) / imagen.naturalHeight
-      ));
+      escala = Math.max(
+        0.001,
+        Math.min(
+          visor.clientWidth / imagen.naturalWidth,
+          visor.clientHeight / imagen.naturalHeight
+        )
+      );
 
       x = (visor.clientWidth - imagen.naturalWidth * escala) / 2;
       y = (visor.clientHeight - imagen.naturalHeight * escala) / 2;
@@ -221,14 +99,13 @@
       dibujar();
     }
 
-    function ampliar(
-            factor,
-            px = visor.clientWidth / 2,
-            py = visor.clientHeight / 2
-    ) {
+    function ampliar(factor, px, py) {
       if (!listo) return;
 
-      const nueva = Math.max(0.001, Math.min(50, escala * factor));
+      const nueva = Math.max(
+        0.001,
+        Math.min(50, escala * factor)
+      );
 
       x = px - (px - x) * nueva / escala;
       y = py - (py - y) * nueva / escala;
@@ -240,114 +117,111 @@
     imagen.onload = () => {
       if (!imagen.naturalWidth || !imagen.naturalHeight) return;
 
-      listo = true;
       imagen.style.width = `${imagen.naturalWidth}px`;
       imagen.style.height = `${imagen.naturalHeight}px`;
-      estado.hidden = true;
 
+      listo = true;
       ajustar();
     };
 
-    imagen.onerror = () => {
-      estado.textContent =
-              "No se pudo cargar: " + datos.archivo +
-              ". Comprueba el nombre y la ubicación del archivo.";
-      zoom.textContent = "Error";
-    };
-
-    const ruta = datos.archivo
-            .split("/")
-            .map(parte => encodeURIComponent(parte))
-            .join("/");
-
-    document.getElementById("original").href = ruta;
-    imagen.src = ruta;
+    imagen.src = archivos[id]
+      .split("/")
+      .map(parte => encodeURIComponent(parte))
+      .join("/");
 
     visor.addEventListener("wheel", event => {
       event.preventDefault();
 
-      const rect = visor.getBoundingClientRect();
-
       ampliar(
-              Math.exp(-event.deltaY * 0.002),
-              event.clientX - rect.left,
-              event.clientY - rect.top
+        Math.exp(-event.deltaY * 0.002),
+        event.clientX,
+        event.clientY
       );
     }, { passive: false });
 
-    visor.addEventListener("pointerdown", event => {
-      if (event.button !== 0 || !listo || arrastre) return;
+    function iniciarGesto() {
+      const puntos = [...punteros.values()];
 
-      arrastre = {
-        id: event.pointerId,
-        px: event.clientX,
-        py: event.clientY,
-        x,
-        y
-      };
+      if (puntos.length === 1) {
+        gesto = {
+          tipo: "arrastre",
+          punto: puntos[0],
+          x,
+          y
+        };
+      } else if (puntos.length >= 2) {
+        const [a, b] = puntos;
+        const cx = (a.x + b.x) / 2;
+        const cy = (a.y + b.y) / 2;
+
+        gesto = {
+          tipo: "pellizco",
+          distancia: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)),
+          escala,
+          anclaX: (cx - x) / escala,
+          anclaY: (cy - y) / escala
+        };
+      } else {
+        gesto = null;
+      }
+
+      visor.classList.toggle("arrastrando", puntos.length > 0);
+    }
+
+    visor.addEventListener("pointerdown", event => {
+      if (!listo || event.button !== 0) return;
+
+      punteros.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY
+      });
 
       visor.setPointerCapture(event.pointerId);
-      visor.classList.add("arrastrando");
+      iniciarGesto();
     });
 
     visor.addEventListener("pointermove", event => {
-      if (!arrastre || event.pointerId !== arrastre.id) return;
+      if (!punteros.has(event.pointerId)) return;
 
-      x = arrastre.x + event.clientX - arrastre.px;
-      y = arrastre.y + event.clientY - arrastre.py;
+      punteros.set(event.pointerId, {
+        x: event.clientX,
+        y: event.clientY
+      });
 
-      dibujar();
+      const puntos = [...punteros.values()];
+
+      if (gesto?.tipo === "arrastre" && puntos.length === 1) {
+        x = gesto.x + puntos[0].x - gesto.punto.x;
+        y = gesto.y + puntos[0].y - gesto.punto.y;
+        dibujar();
+      } else if (gesto?.tipo === "pellizco" && puntos.length >= 2) {
+        const [a, b] = puntos;
+        const distancia = Math.hypot(b.x - a.x, b.y - a.y);
+
+        escala = Math.max(
+          0.001,
+          Math.min(50, gesto.escala * distancia / gesto.distancia)
+        );
+
+        x = (a.x + b.x) / 2 - gesto.anclaX * escala;
+        y = (a.y + b.y) / 2 - gesto.anclaY * escala;
+
+        dibujar();
+      }
     });
 
     function soltar(event) {
-      if (!arrastre || event.pointerId !== arrastre.id) return;
-
-      arrastre = null;
-      visor.classList.remove("arrastrando");
+      if (!punteros.delete(event.pointerId)) return;
+      iniciarGesto();
     }
 
     visor.addEventListener("pointerup", soltar);
     visor.addEventListener("pointercancel", soltar);
     visor.addEventListener("lostpointercapture", soltar);
 
-    document.getElementById("mas").onclick = () => ampliar(1.25);
-    document.getElementById("menos").onclick = () => ampliar(0.8);
-    document.getElementById("ajustar").onclick = ajustar;
-
-    document.getElementById("real").onclick = () => {
-      if (listo) ampliar(1 / escala);
-    };
-
-    document.getElementById("pantalla").onclick = async () => {
-      try {
-        if (document.fullscreenElement) {
-          await document.exitFullscreen();
-        } else {
-          await document.documentElement.requestFullscreen();
-        }
-      } catch {
-        alert("Abre el visor en otra pestaña para usar pantalla completa.");
-      }
-    };
-
-    new ResizeObserver(() => ajustar()).observe(visor);
-
-    document.addEventListener("keydown", event => {
-      if (event.ctrlKey || event.metaKey || event.altKey) return;
-      if (event.target.closest("button, a, input, textarea, select")) return;
-
-      if (event.key === "+" || event.key === "=") {
-        event.preventDefault();
-        ampliar(1.25);
-      } else if (event.key === "-") {
-        event.preventDefault();
-        ampliar(0.8);
-      } else if (event.key === "0") {
-        event.preventDefault();
-        ajustar();
-      }
-    });
-  }
-</script>
+    new ResizeObserver(() => {
+      if (punteros.size === 0) ajustar();
+    }).observe(visor);
+  </script>
 </body>
 </html>
