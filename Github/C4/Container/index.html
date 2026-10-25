@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Diagrama C4</title>
+  <title>Ejemplos C4</title>
 
   <style>
     * {
@@ -12,9 +12,47 @@
 
     html,
     body {
-      width: 100%;
-      height: 100%;
       margin: 0;
+      min-height: 100%;
+      font-family: system-ui, sans-serif;
+      color: #182330;
+      background: #eef2f6;
+    }
+
+    #menu {
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 24px;
+    }
+
+    .ejemplo {
+      margin: 20px 0;
+      padding: 20px;
+      border: 1px solid #d5dce5;
+      border-radius: 12px;
+      background: white;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+
+    .ejemplo a {
+      display: inline-block;
+      margin: 4px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      background: #e5edf7;
+      color: #182330;
+      text-decoration: none;
+    }
+
+    .ejemplo a:hover {
+      background: #cddfff;
+    }
+
+    body.modo-visor {
+      height: 100dvh;
       overflow: hidden;
       background: white;
     }
@@ -23,6 +61,7 @@
       position: fixed;
       inset: 0;
       overflow: hidden;
+      background: white;
       cursor: grab;
       touch-action: none;
     }
@@ -41,187 +80,268 @@
       user-select: none;
       -webkit-user-drag: none;
     }
+
+    [hidden] {
+      display: none !important;
+    }
   </style>
 </head>
 
 <body>
-  <main id="visor">
+  <section id="menu">
+    <h1>Ejemplos C4</h1>
+    <p>Selecciona el diagrama que quieres visualizar.</p>
+
+    <article class="ejemplo">
+      <h2>Logística</h2>
+      <a href="?diagrama=1">Contexto del sistema</a>
+      <a href="?diagrama=2">Contenedores</a>
+    </article>
+
+    <article class="ejemplo">
+      <h2>Universidad</h2>
+      <a href="?diagrama=3">Contexto del sistema</a>
+      <a href="?diagrama=4">Contenedores</a>
+    </article>
+
+    <article class="ejemplo">
+      <h2>Hospital</h2>
+      <a href="?diagrama=5">Contexto del sistema</a>
+      <a href="?diagrama=6">Contenedores</a>
+    </article>
+  </section>
+
+  <main id="visor" hidden aria-label="Visor del diagrama">
     <img id="imagen" alt="Diagrama C4" draggable="false">
   </main>
 
   <script>
-    const archivos = {
-      "1": "logistica/ContextoSistema.svg",
-      "2": "logistica/Paso3Completo (2).svg",
-      "3": "universidad/ContextoSistema (1).svg",
-      "4": "universidad/Paso3Completo (1).svg",
-      "5": "../Hospital/ContextoSistema (2).svg",
-      "6": "../Hospital/Paso3Completo (3).svg"
+    const diagramas = {
+      "1": {
+        titulo: "Logística — Contexto del sistema",
+        archivo: "logistica/ContextoSistema.svg"
+      },
+      "2": {
+        titulo: "Logística — Contenedores",
+        archivo: "logistica/Paso3Completo (2).svg"
+      },
+      "3": {
+        titulo: "Universidad — Contexto del sistema",
+        archivo: "universidad/ContextoSistema (1).svg"
+      },
+      "4": {
+        titulo: "Universidad — Contenedores",
+        archivo: "universidad/Paso3Completo (1).svg"
+      },
+      "5": {
+        titulo: "Hospital — Contexto del sistema",
+        archivo: "../Hospital/ContextoSistema (2).svg"
+      },
+      "6": {
+        titulo: "Hospital — Contenedores",
+        archivo: "../Hospital/Paso3Completo (3).svg"
+      }
     };
 
-    const parametro = new URLSearchParams(location.search)
+    const id = new URLSearchParams(location.search)
       .get("diagrama");
 
-    const id = Object.hasOwn(archivos, parametro)
-      ? parametro
-      : "1";
+    if (Object.hasOwn(diagramas, id)) {
+      const datos = diagramas[id];
+      const visor = document.getElementById("visor");
+      const imagen = document.getElementById("imagen");
 
-    const visor = document.getElementById("visor");
-    const imagen = document.getElementById("imagen");
+      document.getElementById("menu").hidden = true;
+      visor.hidden = false;
+      document.body.classList.add("modo-visor");
+      document.title = datos.titulo;
+      imagen.alt = datos.titulo;
 
-    let escala = 1;
-    let x = 0;
-    let y = 0;
-    let listo = false;
+      let escala = 1;
+      let x = 0;
+      let y = 0;
+      let listo = false;
+      let gesto = null;
 
-    const punteros = new Map();
-    let gesto = null;
+      const punteros = new Map();
 
-    function dibujar() {
-      imagen.style.transform =
-        `translate(${x}px, ${y}px) scale(${escala})`;
-    }
-
-    function ajustar() {
-      if (!listo) return;
-
-      escala = Math.max(
-        0.001,
-        Math.min(
-          visor.clientWidth / imagen.naturalWidth,
-          visor.clientHeight / imagen.naturalHeight
-        )
-      );
-
-      x = (visor.clientWidth - imagen.naturalWidth * escala) / 2;
-      y = (visor.clientHeight - imagen.naturalHeight * escala) / 2;
-
-      dibujar();
-    }
-
-    function ampliar(factor, px, py) {
-      if (!listo) return;
-
-      const nueva = Math.max(
-        0.001,
-        Math.min(50, escala * factor)
-      );
-
-      x = px - (px - x) * nueva / escala;
-      y = py - (py - y) * nueva / escala;
-      escala = nueva;
-
-      dibujar();
-    }
-
-    imagen.onload = () => {
-      if (!imagen.naturalWidth || !imagen.naturalHeight) return;
-
-      imagen.style.width = `${imagen.naturalWidth}px`;
-      imagen.style.height = `${imagen.naturalHeight}px`;
-
-      listo = true;
-      ajustar();
-    };
-
-    imagen.src = archivos[id]
-      .split("/")
-      .map(parte => encodeURIComponent(parte))
-      .join("/");
-
-    visor.addEventListener("wheel", event => {
-      event.preventDefault();
-
-      ampliar(
-        Math.exp(-event.deltaY * 0.002),
-        event.clientX,
-        event.clientY
-      );
-    }, { passive: false });
-
-    function iniciarGesto() {
-      const puntos = [...punteros.values()];
-
-      if (puntos.length === 1) {
-        gesto = {
-          tipo: "arrastre",
-          punto: puntos[0],
-          x,
-          y
-        };
-      } else if (puntos.length >= 2) {
-        const [a, b] = puntos;
-        const cx = (a.x + b.x) / 2;
-        const cy = (a.y + b.y) / 2;
-
-        gesto = {
-          tipo: "pellizco",
-          distancia: Math.max(1, Math.hypot(b.x - a.x, b.y - a.y)),
-          escala,
-          anclaX: (cx - x) / escala,
-          anclaY: (cy - y) / escala
-        };
-      } else {
-        gesto = null;
+      function dibujar() {
+        imagen.style.transform =
+          `translate(${x}px, ${y}px) scale(${escala})`;
       }
 
-      visor.classList.toggle("arrastrando", puntos.length > 0);
-    }
-
-    visor.addEventListener("pointerdown", event => {
-      if (!listo || event.button !== 0) return;
-
-      punteros.set(event.pointerId, {
-        x: event.clientX,
-        y: event.clientY
-      });
-
-      visor.setPointerCapture(event.pointerId);
-      iniciarGesto();
-    });
-
-    visor.addEventListener("pointermove", event => {
-      if (!punteros.has(event.pointerId)) return;
-
-      punteros.set(event.pointerId, {
-        x: event.clientX,
-        y: event.clientY
-      });
-
-      const puntos = [...punteros.values()];
-
-      if (gesto?.tipo === "arrastre" && puntos.length === 1) {
-        x = gesto.x + puntos[0].x - gesto.punto.x;
-        y = gesto.y + puntos[0].y - gesto.punto.y;
-        dibujar();
-      } else if (gesto?.tipo === "pellizco" && puntos.length >= 2) {
-        const [a, b] = puntos;
-        const distancia = Math.hypot(b.x - a.x, b.y - a.y);
+      function ajustar() {
+        if (!listo) return;
 
         escala = Math.max(
           0.001,
-          Math.min(50, gesto.escala * distancia / gesto.distancia)
+          Math.min(
+            visor.clientWidth / imagen.naturalWidth,
+            visor.clientHeight / imagen.naturalHeight
+          )
         );
 
-        x = (a.x + b.x) / 2 - gesto.anclaX * escala;
-        y = (a.y + b.y) / 2 - gesto.anclaY * escala;
+        x = (
+          visor.clientWidth - imagen.naturalWidth * escala
+        ) / 2;
+
+        y = (
+          visor.clientHeight - imagen.naturalHeight * escala
+        ) / 2;
 
         dibujar();
       }
-    });
 
-    function soltar(event) {
-      if (!punteros.delete(event.pointerId)) return;
-      iniciarGesto();
+      function ampliar(factor, px, py) {
+        if (!listo) return;
+
+        const nueva = Math.max(
+          0.001,
+          Math.min(50, escala * factor)
+        );
+
+        x = px - (px - x) * nueva / escala;
+        y = py - (py - y) * nueva / escala;
+        escala = nueva;
+
+        dibujar();
+      }
+
+      imagen.onload = () => {
+        if (!imagen.naturalWidth || !imagen.naturalHeight) {
+          return;
+        }
+
+        imagen.style.width = `${imagen.naturalWidth}px`;
+        imagen.style.height = `${imagen.naturalHeight}px`;
+
+        listo = true;
+        ajustar();
+      };
+
+      imagen.onerror = () => {
+        imagen.hidden = true;
+        console.error("No se pudo cargar:", datos.archivo);
+      };
+
+      imagen.src = datos.archivo
+        .split("/")
+        .map(parte => encodeURIComponent(parte))
+        .join("/");
+
+      visor.addEventListener("wheel", event => {
+        event.preventDefault();
+
+        ampliar(
+          Math.exp(-event.deltaY * 0.002),
+          event.clientX,
+          event.clientY
+        );
+      }, { passive: false });
+
+      function iniciarGesto() {
+        const puntos = [...punteros.values()];
+
+        if (puntos.length === 1) {
+          gesto = {
+            tipo: "arrastre",
+            punto: puntos[0],
+            x,
+            y
+          };
+        } else if (puntos.length >= 2) {
+          const [a, b] = puntos;
+          const cx = (a.x + b.x) / 2;
+          const cy = (a.y + b.y) / 2;
+
+          gesto = {
+            tipo: "pellizco",
+            distancia: Math.max(
+              1,
+              Math.hypot(b.x - a.x, b.y - a.y)
+            ),
+            escala,
+            anclaX: (cx - x) / escala,
+            anclaY: (cy - y) / escala
+          };
+        } else {
+          gesto = null;
+        }
+
+        visor.classList.toggle(
+          "arrastrando",
+          puntos.length > 0
+        );
+      }
+
+      visor.addEventListener("pointerdown", event => {
+        if (!listo || event.button !== 0) return;
+
+        punteros.set(event.pointerId, {
+          x: event.clientX,
+          y: event.clientY
+        });
+
+        visor.setPointerCapture(event.pointerId);
+        iniciarGesto();
+      });
+
+      visor.addEventListener("pointermove", event => {
+        if (!punteros.has(event.pointerId)) return;
+
+        punteros.set(event.pointerId, {
+          x: event.clientX,
+          y: event.clientY
+        });
+
+        const puntos = [...punteros.values()];
+
+        if (
+          gesto?.tipo === "arrastre" &&
+          puntos.length === 1
+        ) {
+          x = gesto.x + puntos[0].x - gesto.punto.x;
+          y = gesto.y + puntos[0].y - gesto.punto.y;
+
+          dibujar();
+        } else if (
+          gesto?.tipo === "pellizco" &&
+          puntos.length >= 2
+        ) {
+          const [a, b] = puntos;
+          const distancia = Math.hypot(
+            b.x - a.x,
+            b.y - a.y
+          );
+
+          escala = Math.max(
+            0.001,
+            Math.min(
+              50,
+              gesto.escala * distancia / gesto.distancia
+            )
+          );
+
+          x = (a.x + b.x) / 2 - gesto.anclaX * escala;
+          y = (a.y + b.y) / 2 - gesto.anclaY * escala;
+
+          dibujar();
+        }
+      });
+
+      function soltar(event) {
+        if (!punteros.delete(event.pointerId)) return;
+        iniciarGesto();
+      }
+
+      visor.addEventListener("pointerup", soltar);
+      visor.addEventListener("pointercancel", soltar);
+      visor.addEventListener("lostpointercapture", soltar);
+
+      new ResizeObserver(() => {
+        if (punteros.size === 0) ajustar();
+      }).observe(visor);
     }
-
-    visor.addEventListener("pointerup", soltar);
-    visor.addEventListener("pointercancel", soltar);
-    visor.addEventListener("lostpointercapture", soltar);
-
-    new ResizeObserver(() => {
-      if (punteros.size === 0) ajustar();
-    }).observe(visor);
   </script>
 </body>
 </html>
