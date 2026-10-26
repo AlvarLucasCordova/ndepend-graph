@@ -6,12 +6,9 @@
   <title>Diagramas C4</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html,
-    body {
+    html, body {
       margin: 0;
       min-height: 100%;
       font-family: system-ui, sans-serif;
@@ -33,9 +30,7 @@
       background: white;
     }
 
-    h2 {
-      margin-top: 0;
-    }
+    h2 { margin-top: 0; }
 
     a {
       display: inline-block;
@@ -47,9 +42,7 @@
       text-decoration: none;
     }
 
-    a:hover {
-      background: #cddfff;
-    }
+    a:hover { background: #cddfff; }
 
     body.modo-visor {
       height: 100dvh;
@@ -67,9 +60,7 @@
       overscroll-behavior: none;
     }
 
-    #visor.arrastrando {
-      cursor: grabbing;
-    }
+    #visor.arrastrando { cursor: grabbing; }
 
     #imagen {
       position: absolute;
@@ -82,9 +73,7 @@
       -webkit-user-drag: none;
     }
 
-    [hidden] {
-      display: none !important;
-    }
+    [hidden] { display: none !important; }
   </style>
 </head>
 
@@ -139,7 +128,7 @@
       },
       "6": {
         titulo: "Hospital — Contenedores",
-        archivo: "../Hospital/Paso3Completo (3).svg"
+        archivo: "../Hospital/Paso3Completo.svg"
       }
     };
 
@@ -156,12 +145,12 @@
       document.title = datos.titulo;
       imagen.alt = datos.titulo;
 
-      const ZOOM_MAXIMO = 100; 
-      
+      const ZOOM_MAXIMO = 20;
+
       let listo = false;
       let escala = 1;
       let minimo = 1;
-      let maximo = 5;
+      let maximo = 20;
       let x = 0;
       let y = 0;
       let gesto = null;
@@ -210,7 +199,6 @@
         escala = minimo;
         x = 0;
         y = 0;
-
         dibujar();
       }
 
@@ -318,7 +306,6 @@
 
         punteros.set(event.pointerId, punto(event));
         visor.setPointerCapture(event.pointerId);
-
         iniciarGesto();
       });
 
